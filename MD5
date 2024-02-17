@@ -1,0 +1,14 @@
+2209f53cd30f4a0902501d9736f14335 *DESCRIPTION
+1d2c80b817b7f92784c72db34ba9e935 *LICENSE.note
+6b3951ef09d958498235501945a6a7b6 *NAMESPACE
+a3f1e3256cd2ce78a76a5fdb1a54ee1c *R/BPF.R
+bf04fc7d4b33ede7e2bb8231270c2e98 *R/auxiliary_functions.R
+c14ec716cc9c228bbcea7a527cfdc11d *R/plot.R
+11d66ebf16d7c59df9682db16ed8eb96 *R/print.R
+91eabdb5ce2c64562c1a56c1438e0634 *R/summary.R
+f01682ffd9d5582c0d3b8a226f3c2b16 *build/partial.rdb
+01eb7bb0c31dbd13088d9e4b35cb0a67 *man/BPF.Rd
+4c775328a68b75b5cb41ed5123c6332e *man/plot.BPF.Rd
+128bad598f2bee2b67425a0ab40d957c *man/print.BPF.Rd
+25dac96523b3b31a4a0307b1fa0d6833 *man/print.summary.BPF.Rd
+2468e2607d0b42f094b5554061bd69f1 *man/summary.BPF.Rd

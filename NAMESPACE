@@ -1,0 +1,6 @@
+S3method(plot,BPF)
+S3method(print,BPF)
+S3method(print,summary.BPF)
+S3method(summary,BPF)
+export(BPF)
+
