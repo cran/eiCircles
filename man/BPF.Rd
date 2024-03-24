@@ -200,7 +200,7 @@ of the underlying transition probabilities (\code{TP}) of the row-standardized v
 of the underlying transition probabilities (\code{TP}) of the row-standardized vote transitions from election 1 to election 2.}
 
 \item{beta}{ The estimated vector of internal parameters (logits) at convergence.
-The first \code{R(C-1) - NC} elements (where \code{NR} is the number of restrictions imposed in cell probabilities) are logits of transitions and the last \code{nrow(meta)} elements are the regression
+The first \code{R(C-1) - NR} elements (where \code{NR} is the number of restrictions imposed in cell probabilities) are logits of transitions and the last \code{nrow(meta)} elements are the regression
 coefficients in case covariates are present. The over dispersion(s) parameter(s) is (are) in between.
 Default, just one over-dispersion parameter. In case of non-convergence, if the function is used with
 \code{save.beta = TRUE}, the components of beta from the file "beta.Rdata" and may be used to restart the algorithm

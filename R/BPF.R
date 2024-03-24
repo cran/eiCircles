@@ -208,7 +208,7 @@
 #'                   of the underlying transition probabilities (`TP`) of the row-standardized vote transitions from election 1 to election 2.}
 #'
 #'  \item{beta}{ The estimated vector of internal parameters (logits) at convergence.
-#'               The first `R(C-1) - NC` elements (where `NR` is the number of restrictions imposed in cell probabilities) are logits of transitions and the last `nrow(meta)` elements are the regression
+#'               The first `R(C-1) - NR` elements (where `NR` is the number of restrictions imposed in cell probabilities) are logits of transitions and the last `nrow(meta)` elements are the regression
 #'               coefficients in case covariates are present. The over dispersion(s) parameter(s) is (are) in between.
 #'               Default, just one over-dispersion parameter. In case of non-convergence, if the function is used with
 #'               `save.beta = TRUE`, the components of beta from the file "beta.Rdata" and may be used to restart the algorithm
@@ -352,26 +352,39 @@ BPF <- function(X,
     dimnames(TR.units) <- dimnames(TR.votes.units) <- nombres
   } else if (local == "lik"){
     TP <- TM.init
-    beta <- as.vector(t(log(TM.init[, 1:(J-1)]/TM.init[, J])))
-    last.over <- length(res$beta) - ir
-    if (is.null(dispersion.rows)){
-      inic.over <- length(res$beta) - I - ir + 1L
-      beta <- c(beta, res$beta[inic.over:last.over])
-    } else{
-      inic.over <- length(res$beta) - I + nrow(dispersion.rows) - ir + 1L
-      beta <- c(beta, res$beta[inic.over:last.over])
-    }
-    beta <- matrix(beta, ncol = 1L)
+    theta <- extract_theta(beta = res$beta, ir = ir, I = I, J = J, dispersion.rows = dispersion.rows)
 
-    local.adjust <- unit_lk(N = N, Y = Y, start = beta,
-                            dispersion.rows = dispersion.rows, cs = cs,
-                            seed = seed, max.iter = max.iter, tol = tol)
+    local.adjust <- unit_lik_all(N = N, Y = Y, TM.init = TM.init,
+                                 theta = theta, seed = seed, cs = cs)
     TM <- TR <- local.adjust$TR
     TM.votes <- local.adjust$TR.votes
     TR.units <- local.adjust$TR.units
     TR.votes.units <- local.adjust$TR.votes.units
     dimnames(TM) <- dimnames(TP) <- dimnames(TM.votes) <- dimnames(TR) <- list(names1, names2)
     dimnames(TR.units) <- dimnames(TR.votes.units) <- nombres
+
+# Previous lik
+#    TP <- TM.init
+#    beta <- as.vector(t(log(TM.init[, 1:(J-1)]/TM.init[, J])))
+#    last.over <- length(res$beta) - ir
+#    if (is.null(dispersion.rows)){
+#      inic.over <- length(res$beta) - I - ir + 1L
+#      beta <- c(beta, res$beta[inic.over:last.over])
+#    } else{
+#      inic.over <- length(res$beta) - I + nrow(dispersion.rows) - ir + 1L
+#      beta <- c(beta, res$beta[inic.over:last.over])
+#    }
+#   beta <- matrix(beta, ncol = 1L)
+
+#    local.adjust <- unit_lk(N = N, Y = Y, start = beta,
+#                            dispersion.rows = dispersion.rows, cs = cs,
+#                            seed = seed, max.iter = max.iter, tol = tol)
+#    TM <- TR <- local.adjust$TR
+#    TM.votes <- local.adjust$TR.votes
+#    TR.units <- local.adjust$TR.units
+#    TR.votes.units <- local.adjust$TR.votes.units
+#    dimnames(TM) <- dimnames(TP) <- dimnames(TM.votes) <- dimnames(TR) <- list(names1, names2)
+#    dimnames(TR.units) <- dimnames(TR.votes.units) <- nombres
   }
 
   # Confidence intervals

@@ -2014,4 +2014,220 @@ unit_lk <- function(N,
 }
 ##------------------------------------------------------------------------------
 
+# This function estimates the transfer matrix of a local unit given a global estimate
+# fulfilling its row and column constraints using the metric defined by the underlying
+# likelihood.
 
+unit_lik <- function(global.sol, vector.fila, vector.columna, theta, cs = 50){
+  nr <- length(vector.fila)
+  nc <- length(vector.columna)
+  x0 <- as.vector(t(global.sol))
+
+  lb <- rep(0L, nr*nc)
+  ub <- rep(1L, nr*nc)
+
+  fobj <- function(x){
+    f_obj(incog = x,
+          vector.fila = vector.fila,
+          vector.columna = vector.columna,
+          theta = theta,
+          cs = cs)
+  }
+
+  # Constraints
+  A1 <- t(kronecker(vector.fila, diag(rep(1L, nc))))
+  A2 <- t(kronecker(diag(rep(1L, nr)), rep(1L, nc)))[-1L, ]
+  A <- rbind(A1, A2)
+
+  B <- c(vector.columna, rep(1L, nr - 1L))
+
+  # Depending on the initial x0, in approximately 1/18000 cases the function
+  # solnl crashes. IPF is applied in these cases.
+  sol <- tryCatch(NlcOptim::solnl(X = x0,
+                                  objfun = fobj,
+                                  Aeq = A,
+                                  Beq = B,
+                                  lb = lb,
+                                  ub = ub)$par,
+                  error = function(e) as.vector(t(IPF(global.sol, as.vector(vector.columna),
+                                                      as.vector(vector.fila)))))
+
+  prop <- matrix(sol, nr, nc, byrow = TRUE)
+  prop[prop < 0] <- 0L
+  votes <- prop*t(kronecker(t(vector.fila), rep(1L, nc)))
+
+  return(list("m.prop" = prop, "m.votes" = votes))
+}
+
+##------------------------------------------------------------------------------
+
+# This function estimates the transfer matrix of a local unit given a global estimate
+# fulfilling its row and column constraints using the metric defined by the underlying
+# likelihood, taking into account that one of his margins could be zero.
+
+unit_lik_0 <- function(global.sol, vector.fila, vector.columna, theta, cs = 50){
+  prop0 <- votes0 <- matrix(0, length(vector.fila), length(vector.columna), byrow = TRUE)
+  rows0 <- which(vector.fila < 10^-12)
+  cols0 <- which(vector.columna < 10^-12)
+  if (length(rows0) > 0){
+    vector.fila <- vector.fila[-rows0]
+    theta <- theta[-rows0]
+  } else {
+    vector.fila <- as.vector(vector.fila)
+  }
+  if (length(cols0) > 0){
+    vector.columna <- vector.columna[-cols0]
+  } else {
+    vector.columna <- as.vector(vector.columna)
+  }
+  if (length(rows0) > 0)
+    global.sol <- as.matrix(global.sol[-rows0, , drop = FALSE])
+  if (length(cols0) > 0)
+    global.sol <- as.matrix(global.sol[, -cols0, drop = FALSE])
+  global.sol <- global.sol/rowSums(global.sol)
+
+  nr <- length(vector.fila)
+  nc <- length(vector.columna)
+
+  if(nr == 1L){
+    prop <- vector.columna/sum(vector.columna)
+    votes <- vector.columna
+  } else if (nc == 1L){
+    prop <- rep(1, length(vector.columna))
+    votes <- vector.columna
+  } else {
+    x0 <- as.vector(t(global.sol))
+    lb <- rep(0L, nr*nc)
+    ub <- rep(1L, nr*nc)
+
+    fobj <- function(x){
+      f_obj(incog = x,
+            vector.fila = vector.fila,
+            vector.columna = vector.columna,
+            theta = theta,
+            cs = cs)
+    }
+
+    # Constraints
+    A1 <- t(kronecker(vector.fila, diag(rep(1L, nc))))
+    A2 <- t(kronecker(diag(rep(1L, nr)), rep(1L, nc)))[-1L, ]
+    A <- rbind(A1, A2)
+
+    B <- c(vector.columna, rep(1L, nr - 1L))
+
+    # Depending on the initial x0, in approximately 1/18000 cases the function
+    # solnl crashes. IPF is applied in these cases.
+    sol <- tryCatch(NlcOptim::solnl(X = x0,
+                              objfun = fobj,
+                              Aeq = A,
+                              Beq = B,
+                              lb = lb,
+                              ub = ub)$par,
+                    error = function(e) as.vector(t(IPF(global.sol, as.vector(vector.columna),
+                                                        as.vector(vector.fila)))))
+
+    prop <- matrix(sol, nr, nc, byrow = TRUE)
+    prop[prop < 0] <- 0L
+    votes <- prop*t(kronecker(t(vector.fila), rep(1L, nc)))
+  }
+
+  if (length(rows0) > 0 & length(cols0) > 0){
+    prop0[-rows0, -cols0] <- prop
+    votes0[-rows0, -cols0] <- votes
+  } else if (length(rows0) > 0){
+    prop0[-rows0, ] <- prop
+    votes0[-rows0, ] <- votes
+  } else if (length(cols0) > 0){
+    prop0[, -cols0] <- prop
+    votes0[, -cols0] <- votes
+  }
+
+  return(list("m.prop" = prop0, "m.votes" = votes0))
+}
+
+##------------------------------------------------------------------------------
+
+# Base function to define the objective function
+f_obj <- function(incog, vector.fila, vector.columna, theta, cs = 50){
+  nr <- length(vector.fila)
+  nc <- length(vector.columna)
+  PI <- matrix(incog, nr, nc, byrow = TRUE)
+  suma <- sum(vector.fila)
+  resi <- (t(vector.columna) - t(vector.fila)%*%PI)/suma
+  cova <- 0L
+  for (jj in 1L:nr){
+    lambda <- 0
+    if (vector.fila[jj] > 0){
+      cjj <- cs*(vector.fila[jj] - 1)/vector.fila[jj]
+      lambda <- (1 + theta[[jj]] * cjj)
+      cova <- cova + diag(PI[jj, ]) - PI[jj, ]%*%t(PI[jj, ])*lambda
+    }
+  }
+
+  if (abs(det(cova)) > 10^-8){
+    cova <- solve(cova)
+  } else {
+    cova <- diag(rep(1, nc))
+  }
+
+  valor <- resi %*% cova %*% t(resi) # + log(det(cova)) # + sum(abs(incog - matriz)) #
+  return(valor)
+}
+
+##------------------------------------------------------------------------------
+
+extract_theta <- function(beta, ir, I, J, dispersion.rows){
+  last.over <- length(beta) - ir
+  if (is.null(dispersion.rows)){
+    inic.over <- length(beta) - I - ir + 1L
+    theta <- beta[inic.over:last.over]
+  } else{
+    inic.over <- length(beta) - I + nrow(dispersion.rows) - ir + 1L
+    theta0 <- beta[inic.over:last.over]
+    theta <- rep(NA, I)
+    theta[unique(dispersion.rows[, 1L])] <- theta0
+    for (rr in 1L:nrow(dispersion.rows)){
+      theta[dispersion.rows[rr, 2L]] <- theta[dispersion.rows[rr, 1L]]
+    }
+  }
+  theta <- exp(theta)/(1 + exp(theta))
+  return(theta)
+}
+##------------------------------------------------------------------------------
+
+unit_lik_all <- function(N, Y, TM.init, theta, seed, cs = 50){
+  if (!is.null(seed)) set.seed(seed)
+  VTM.votes <- VTM.prop <- array(NA, dim = c(ncol(N), ncol(Y), nrow(N)))
+
+  for (ii in 1:nrow(N)){
+    vector.fila <- as.matrix(N[ii, ])
+    vector.columna <- as.matrix(Y[ii, ])
+
+    rows0 <- which(vector.fila < 10^-12)
+    cols0 <- which(vector.columna < 10^-12)
+
+    if(length(rows0) == 0 & length(cols0) == 0){
+      sol <- unit_lik(global.sol = TM.init,
+                      vector.fila = vector.fila,
+                      vector.columna = vector.columna,
+                      theta = theta,
+                      cs = cs)
+
+    } else {
+      sol <- unit_lik_0(global.sol = TM.init,
+                        vector.fila = vector.fila,
+                        vector.columna = vector.columna,
+                        theta = theta,
+                        cs = cs)
+    }
+
+    VTM.votes[, , ii] <- sol$m.votes
+    VTM.prop[, , ii] <- sol$m.prop
+  }
+
+  TR.votes <- apply(VTM.votes, c(1, 2), sum)
+  TR <- TR.votes/rowSums(TR.votes)
+
+  return(list("TR" = TR, "TR.votes" = TR.votes,
+              "TR.units" = VTM.prop, "TR.votes.units" = VTM.votes))
+}
