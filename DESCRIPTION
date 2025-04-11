@@ -2,7 +2,7 @@ Package: eiCircles
 Type: Package
 Title: Ecological Inference of RxC Tables by Overdispersed-Multinomial
         Models
-Version: 0.0.1-7
+Version: 0.0.1-12
 Authors@R: 
      c(person(given = "Antonio",
            family = "Forcina",
@@ -25,11 +25,11 @@ License: GPL (>= 2)
 Encoding: UTF-8
 Imports: stats, NlcOptim (>= 0.6)
 Suggests: ggplot2, scales
-RoxygenNote: 7.1.1
+RoxygenNote: 7.3.2
 NeedsCompilation: no
-Packaged: 2024-03-24 13:41:02 UTC; mariaamparo
+Packaged: 2025-04-11 10:17:27 UTC; pavia
 Author: Antonio Forcina [aut] (<https://orcid.org/0000-0001-5239-5495>),
   Jose M. Pavía [aut, cre] (<https://orcid.org/0000-0002-0129-726X>)
 Maintainer: Jose M. Pavía <jose.m.pavia@uv.es>
 Repository: CRAN
-Date/Publication: 2024-03-24 19:10:02 UTC
+Date/Publication: 2025-04-11 11:20:01 UTC

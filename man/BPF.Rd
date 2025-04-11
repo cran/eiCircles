@@ -7,7 +7,7 @@
 BPF(
   X,
   Y,
-  local = "lik",
+  local = "IPF",
   covariates = NULL,
   census.changes = "adjust1",
   stable.units = TRUE,
@@ -23,6 +23,7 @@ BPF(
   start.values = NULL,
   seed = NULL,
   max.iter = 100,
+  max.iter.hyper = 1000,
   tol = 1e-04,
   verbose = FALSE,
   save.beta = FALSE,
@@ -39,8 +40,11 @@ or the sum across rows (the margins of column options) of the K ecological table
 \item{local}{A character string indicating the algorithm to be used for adjusting the
 estimates of the transition probabilities obtained for the whole area (electoral space)
 with the actual observations available in each local unit. Only \code{"IPF"} (iterative
-proportional fitting, also known as raking), \code{"lik"} (an algorithm based on the assumed likelihood)
-and \code{"none"} are allowed. When \code{local = "none"}, no local estimates are obtained. Default, \code{"lik"}.}
+proportional fitting, also known as raking), \code{"lik"} (an algorithm based on the assumed likelihood),
+\code{"hyper"} (an algorithm based on assuming a multi-hypergeometric distribution for the inner
+values of the unit table given the observed row and column margins, which should be integers;
+even after census adjustments, if this is necessary) and \code{"none"} are allowed. When \code{local = "none"},
+no local estimates are obtained. Default, \code{"IPF"}}
 
 \item{covariates}{A list with two components, \code{covar} and \code{meta}. \code{covar} is a matrix (or data.frame),
 of order KxNC (where K is the number of (polling) units and NC the number of
@@ -161,6 +165,9 @@ predictors of the regression models.}
 \item{max.iter}{Integer positive number. Maximum number of iterations to be performed for the Fisher scoring algorithm during the
 MLE estimation. Default, 100.}
 
+\item{max.iter.hyper}{Integer positive number. Maximum number of iterations without change to be performed for search of the MLE estimate in each
+unit table when \code{local = "hyper"}. Default, 1000.}
+
 \item{tol}{Maximum value allowed for the numerical estimates of the partial derivatives of the likelihood in the point of
 convergence. Default, 0.0001.}
 
@@ -178,32 +185,30 @@ of a premature failure of convergence process. Default \code{FALSE}.}
 A list with the following components
 
 \item{TM}{ The estimated RxC table (matrix) of transition probabilities/rates. This coincides with \code{TP} when \code{local = "none"} and
-is equal to \code{TR} when \code{local = "IPF"} or \code{local = "lik"}.}
+is equal to \code{TR} when \code{local = "IPF"}, \code{local = "hyper"} or \code{local = "lik"}.}
 \item{TM.votes}{ The estimated RxC table (matrix) of votes corresponding to \code{TM}.}
 \item{TP}{ The estimated RxC table (matrix) of underlying transition probabilities obtained after applying the approach in Forcina et al. (2012)
 with the specified model.}
-\item{TR}{ When \code{local = "IPF"} or \code{local = "lik"}, the estimated RxC table/matrix of transition rates obtained as composition of the estimated unit tables/matrices
+\item{TP.units.cov}{ With covariates an array of order RxCxK with the estimates tables/matrices of transition probabilities
+corresponding to each unit taking into account the values of the covariates in the unit. Without covariates
+this object is \code{NULL}.}
+\item{TR}{ When \code{local = "IPF"}, \code{local = "hyper"} or \code{local = "lik"}, the estimated RxC table/matrix of transition rates obtained as composition of the estimated unit tables/matrices
 attained after adjusting \code{TP} in each polling unit to the unit margins using the iterative proportional fitting algorithm. When
-\code{local = "none"}, this object is `NULL.}
-
-\item{TR.units}{ When \code{local = "IPF"} or \code{local = "lik"}, an array of order RxCxK with the tables/matrices of transition rates attained in each unit
+\code{local = "none"}, this object is \code{NULL}.}
+\item{TR.units}{ When \code{local = "IPF"}, \code{local = "hyper"} or \code{local = "lik"}, an array of order RxCxK with the tables/matrices of transition rates attained in each unit
 attained after adjusting \code{TP}  using the iterative proportional fitting algorithm to the unit margins. When
-\code{local = "none"}, this object is `NULL.}
-
-\item{TR.votes.units}{ When \code{local = "IPF"} or \code{local = "lik"}, the array of order RxCxK with the tables/matrices of votes linked to the \code{TR.units} array. When
-\code{local = "none"}, this object is `NULL.}
-
+\code{local = "none"}, this object is \code{NULL}.}
+\item{TR.votes.units}{ When \code{local = "IPF"}, \code{local = "hyper"} or \code{local = "lik"}, the array of order RxCxK with the tables/matrices of votes linked to the \code{TR.units} array. When
+\code{local = "none"}, this object is \code{NULL}.}
 \item{TP.lower}{ A matrix of order RxC with the estimated lower limits of the confidence intervals, based on a normal approximation,
 of the underlying transition probabilities (\code{TP}) of the row-standardized vote transitions from election 1 to election 2.}
-
 \item{TP.upper}{ A matrix of order RxC with the estimated upper limits of the confidence intervals, based on a normal approximation,
 of the underlying transition probabilities (\code{TP}) of the row-standardized vote transitions from election 1 to election 2.}
-
 \item{beta}{ The estimated vector of internal parameters (logits) at convergence.
 The first \code{R(C-1) - NR} elements (where \code{NR} is the number of restrictions imposed in cell probabilities) are logits of transitions and the last \code{nrow(meta)} elements are the regression
 coefficients in case covariates are present. The over dispersion(s) parameter(s) is (are) in between.
 Default, just one over-dispersion parameter. In case of non-convergence, if the function is used with
-\code{save.beta = TRUE}, the components of beta from the file "beta.Rdata" and may be used to restart the algorithm
+\code{save.beta = TRUE}, the components of beta from the file "beta.Rdata" may be used to restart the algorithm
 from where it stopped by introducing them via the \code{start.values} argument.}
 \item{overdispersion}{ The estimated vector at convergence of internal overdispersion parameters in the scale from 0 to 1.}
 \item{sd.TP}{ Estimated standard deviations of the estimated transition probabilities.}
@@ -216,6 +221,8 @@ of the estimated variance.}
 \item{selected.units}{ A vector with the indexes corresponding to the units finally selected to estimate the vote
 transition probability matrix.}
 \item{iter}{ An integer number indicating the number of iterations performed before converging or when stopped.}
+\item{X}{ Matrix of order KxR with the adjusted electoral results recorded in election 1.}
+\item{Y}{ Matrix of order KxC with the adjusted electoral results recorded in election 2.}
 \item{inputs}{ A list containing all the objects with the values used as arguments by the function.}
 }
 \description{

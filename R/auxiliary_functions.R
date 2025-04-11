@@ -15,8 +15,15 @@ tests_inputs <- function(argg){
     stop("The value set for argument 'census.changes' is invalid. Only 'adjust1' and 'adjust2' are allowed.")
 
   # Test local
-  if (!(argg$local %in% c("none", "IPF", "lik")))
-    stop("The value set for argument 'local' is invalid. Only 'none', 'IPF' and 'lik' are allowed.")
+  if (!(argg$local %in% c("none", "IPF", "lik", "hyper")))
+    stop("The value set for argument 'local' is invalid. Only 'none', 'IPF', 'hyper' and 'lik' are allowed.")
+
+  # Test integers
+  if(argg$local == "hyper"){
+    is_int <- function(x) is.integer(x) || (is.numeric(x) && identical(round(x), x))
+    if(!all(sapply(argg$X, is_int)) | !all(sapply(argg$Y, is_int)))
+      stop("The value 'hyper' for argument 'local' can only be used when margins are integers.")
+  }
 
   # Test stability.par
   if (argg$stability.par < 0)
@@ -794,7 +801,7 @@ votlan <- function(N, Y, C, Imod, start, cs, seed, mit, tol, verbose, save.beta)
 
   return(list("Q" = res$Q, "beta" = beta, "La" = res$La, "Vp" = res$Vp,
               "sbe" = sqrt(diag(V)), "madis" = res$madis, "lk" = f.res$lk, "iter" = f.res$iter,
-              "V" = V))
+              "V" = V, "Q.cov" = res$Q.cov))
 }
 ##------------------------------------------------------------------------------
 
@@ -1303,6 +1310,7 @@ TraSeM <- function(be, V, Darg, Marg) {
   Q <- rep(0L, I * Jm)
   madis <- rep(0, K)
   be <- be * (abs(be) < 640) + 640 * sign(be) * (abs(be) >= 640)
+  Q.cov <- array(NA, c(I, Jm + 1L, K)) # Local transition matrix with covariates
 
   # Betas for transitions
   X <- cbind(X1, X2)
@@ -1342,9 +1350,9 @@ TraSeM <- function(be, V, Darg, Marg) {
     }
     D <- Om %*% X
     Q <- P
+    Q.cov <- NULL # Local transition matrix with covariates
 
   } else { # with covariates
-
     for (k in 1:K) {
       # Compute P
       ck <- C[k, ]
@@ -1353,6 +1361,7 @@ TraSeM <- function(be, V, Darg, Marg) {
       et <- X %*% btra + off[IJm]
       Et <- t(matrix(exp(et), nrow = Jm, byrow = FALSE))
       Pk <- diag(1 / (1 + rowSums(Et))) %*% Et
+      Q.cov[, , k] <- cbind(Pk, 1-rowSums(Pk))
 
       # Variances of transitions
       for (i in 1:I) {
@@ -1387,7 +1396,7 @@ TraSeM <- function(be, V, Darg, Marg) {
   Vp <- TT %*% Vp %*% t(TT)
   Vp[Vp < 10^-10] <- 10^-10
   Vp <- sqrt(t(matrix(diag(Vp), nrow = Jm + 1L, byrow = FALSE)))
-  return(list("Q" = Q, "Vp" = Vp, "La" = La, "madis" = madis))
+  return(list("Q" = Q, "Vp" = Vp, "La" = La, "madis" = madis, "Q.cov" = Q.cov))
 }
 ##------------------------------------------------------------------------------
 
@@ -2231,3 +2240,158 @@ unit_lik_all <- function(N, Y, TM.init, theta, seed, cs = 50){
   return(list("TR" = TR, "TR.votes" = TR.votes,
               "TR.units" = VTM.prop, "TR.votes.units" = VTM.votes))
 }
+
+##------------------------------------------------------------------------------
+
+unit_hg_adjust <- function(P.g, row.margins, column.margins, iter.max = 1000){
+  # Initial solution
+  P.init <- row.margins * P.g
+  P0 <- round(P.init)
+  P0.part <- P0[-length(row.margins), -length(column.margins)]
+  P0[length(row.margins), -length(column.margins)] <-
+    column.margins[-length(column.margins)] - colSums(P0.part)
+  P0[P0 < 0] <- 0
+  P0[, length(column.margins)] <- row.margins - rowSums(P0[,-length(column.margins)])
+  P0[P0 < 0] <- 0
+  P0 <- constraints_verification(P0, row.margins, column.margins)
+
+  # Initial probability
+  prob0 <- 1
+  for (rr in 1L:nrow(P0)){
+    prob0 <- prob0 * stats::dmultinom(x = P0[rr, ], prob = P.g[rr, ])
+  }
+
+  # Searching for a better solution
+  iter <- 0
+  while(iter < iter.max){
+    perturba <- matrix(sample(c(-1, 0, 1), size = prod(dim(P0)), replace = TRUE),
+                       nrow = nrow(P0))
+    P.new <- P0 + perturba
+    P.new <- constraints_verification(P.new, row.margins, column.margins)
+    prob.new <- 1
+    for (rr in 1L:nrow(P0)){
+      prob.new <- prob.new * stats::dmultinom(x = P.new[rr, ], prob = P.g[rr, ])
+    }
+    iter <- iter + 1
+    if(prob0 < prob.new){
+      P0 <- P.new
+      prob0 <- prob.new
+      iter <- 0
+    }
+  }
+  return(P0)
+}
+
+##------------------------------------------------------------------------------
+
+constraints_verification <- function(P0, r.margins, c.margins){
+
+  dif.r <- rowSums(P0) - r.margins
+  while( max(abs(dif.r)) != 0 ){
+    pos <- which(dif.r > 0)
+    neg <- which(dif.r < 0)
+    if (length(pos) != 0){
+      for (ii in 1L:length(pos)){
+        muestra <- sample(1:length(c.margins), 1)
+        P0[pos[ii], muestra] <- P0[pos[ii], muestra] - 1
+      }
+    }
+    if (length(neg) != 0){
+      for (ii in 1L:length(pos)){
+        muestra <- sample(1:length(c.margins), 1)
+        P0[neg[ii], muestra] <- P0[neg[ii], muestra] + 1
+      }
+    }
+    P0[P0 < 0] <- 0
+    dif.c <- colSums(P0) - c.margins
+    while( max(abs(dif.c)) != 0 ){
+      pos <- which(dif.c > 0)
+      neg <- which(dif.c < 0)
+      if (length(pos) != 0){
+        for (ii in 1L:length(pos)){
+          muestra <- sample(1:length(r.margins), 1)
+          P0[muestra, pos[ii]] <- P0[muestra, pos[ii]] - 1
+        }
+      }
+      if (length(neg) != 0){
+        for (ii in 1L:length(pos)){
+          muestra <- sample(1:length(r.margins), 1)
+          P0[muestra, neg[ii]] <- P0[muestra, neg[ii]] + 1
+        }
+      }
+      P0[P0 < 0] <- 0
+      dif.c <- colSums(P0) - c.margins
+    }
+    P0[P0 < 0] <- 0
+    dif.r <- rowSums(P0) - r.margins
+  }
+
+  P0[P0 < 0] <- 0
+  dif.c <- colSums(P0) - c.margins
+  while( max(abs(dif.c)) != 0 ){
+    pos <- which(dif.c > 0)
+    neg <- which(dif.c < 0)
+    if (length(pos) != 0){
+      for (ii in 1L:length(pos)){
+        muestra <- sample(1:length(r.margins), 1)
+        P0[muestra, pos[ii]] <- P0[muestra, pos[ii]] - 1
+      }
+    }
+    if (length(neg) != 0){
+      for (ii in 1L:length(pos)){
+        muestra <- sample(1:length(r.margins), 1)
+        P0[muestra, neg[ii]] <- P0[muestra, neg[ii]] + 1
+      }
+    }
+    P0[P0 < 0] <- 0
+    dif.r <- rowSums(P0) - r.margins
+    while( max(abs(dif.r)) != 0 ){
+      pos <- which(dif.r > 0)
+      neg <- which(dif.r < 0)
+      if (length(pos) != 0){
+        for (ii in 1L:length(pos)){
+          muestra <- sample(1:length(c.margins), 1)
+          P0[pos[ii], muestra] <- P0[pos[ii], muestra] - 1
+        }
+      }
+      if (length(neg) != 0){
+        for (ii in 1L:length(pos)){
+          muestra <- sample(1:length(c.margins), 1)
+          P0[neg[ii], muestra] <- P0[neg[ii], muestra] + 1
+        }
+      }
+      P0[P0 < 0] <- 0
+      dif.r <- rowSums(P0) - r.margins
+    }
+    P0[P0 < 0] <- 0
+    dif.c <- colSums(P0) - c.margins
+  }
+  return(P0)
+}
+
+##------------------------------------------------------------------------------
+
+unit_all_hg_adjust <- function(TM.init, N, Y, seed = NULL, iter.max = 1000){
+  if (!is.null(seed)) set.seed(seed)
+  VTM.votes <- VTM.prop <- array(NA, dim = c(ncol(N), ncol(Y), nrow(N)))
+
+  for (ii in 1:nrow(N)){
+    vector.fila <- N[ii, ]
+    vector.columna <- Y[ii, ]
+    VTM.votes[, , ii] <- unit_hg_adjust(P.g = TM.init,
+                                        row.margins = vector.fila,
+                                        column.margins = vector.columna,
+                                        iter.max = iter.max)
+    VTM.prop[, , ii] <- VTM.votes[, , ii]/rowSums(VTM.votes[, , ii])
+  }
+  VTM.prop[is.nan(VTM.prop)] <- 0
+
+  TR.votes <- apply(VTM.votes, c(1, 2), sum)
+  TR <- TR.votes/rowSums(TR.votes)
+  return(list("TR" = TR, "TR.votes" = TR.votes,
+              "TR.units" = VTM.prop, "TR.votes.units" = VTM.votes))
+}
+
+##------------------------------------------------------------------------------
+
+

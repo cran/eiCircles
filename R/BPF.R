@@ -17,8 +17,11 @@
 #' @param local A character string indicating the algorithm to be used for adjusting the
 #'              estimates of the transition probabilities obtained for the whole area (electoral space)
 #'              with the actual observations available in each local unit. Only `"IPF"` (iterative
-#'              proportional fitting, also known as raking), `"lik"` (an algorithm based on the assumed likelihood)
-#'              and `"none"` are allowed. When `local = "none"`, no local estimates are obtained. Default, `"lik"`.
+#'              proportional fitting, also known as raking), `"lik"` (an algorithm based on the assumed likelihood),
+#'             `"hyper"` (an algorithm based on assuming a multi-hypergeometric distribution for the inner
+#'              values of the unit table given the observed row and column margins, which should be integers;
+#'              even after census adjustments, if this is necessary) and `"none"` are allowed. When `local = "none"`,
+#'              no local estimates are obtained. Default, `"IPF"`
 #'
 #' @param covariates A list with two components, `covar` and `meta`. `covar` is a matrix (or data.frame),
 #'                   of order KxNC (where K is the number of (polling) units and NC the number of
@@ -139,6 +142,9 @@
 #' @param max.iter Integer positive number. Maximum number of iterations to be performed for the Fisher scoring algorithm during the
 #'                MLE estimation. Default, 100.
 #'
+#' @param max.iter.hyper Integer positive number. Maximum number of iterations without change to be performed for search of the MLE estimate in each
+#'                       unit table when `local = "hyper"`. Default, 1000.
+#'
 #' @param tol Maximum value allowed for the numerical estimates of the partial derivatives of the likelihood in the point of
 #'            convergence. Default, 0.0001.
 #'
@@ -186,32 +192,30 @@
 #' A list with the following components
 #'
 #'  \item{TM}{ The estimated RxC table (matrix) of transition probabilities/rates. This coincides with `TP` when `local = "none"` and
-#'             is equal to `TR` when `local = "IPF"` or `local = "lik"`.}
+#'             is equal to `TR` when `local = "IPF"`, `local = "hyper"` or `local = "lik"`.}
 #'  \item{TM.votes}{ The estimated RxC table (matrix) of votes corresponding to `TM`.}
 #'  \item{TP}{ The estimated RxC table (matrix) of underlying transition probabilities obtained after applying the approach in Forcina et al. (2012)
 #'             with the specified model.}
-#'  \item{TR}{ When `local = "IPF"` or `local = "lik"`, the estimated RxC table/matrix of transition rates obtained as composition of the estimated unit tables/matrices
+#'  \item{TP.units.cov}{ With covariates an array of order RxCxK with the estimates tables/matrices of transition probabilities
+#'                       corresponding to each unit taking into account the values of the covariates in the unit. Without covariates
+#'                       this object is `NULL`.}
+#'  \item{TR}{ When `local = "IPF"`, `local = "hyper"` or `local = "lik"`, the estimated RxC table/matrix of transition rates obtained as composition of the estimated unit tables/matrices
 #'             attained after adjusting `TP` in each polling unit to the unit margins using the iterative proportional fitting algorithm. When
-#'             `local = "none"`, this object is `NULL.}
-#'
-#'  \item{TR.units}{ When `local = "IPF"` or `local = "lik"`, an array of order RxCxK with the tables/matrices of transition rates attained in each unit
+#'             `local = "none"`, this object is `NULL`.}
+#'  \item{TR.units}{ When `local = "IPF"`, `local = "hyper"` or `local = "lik"`, an array of order RxCxK with the tables/matrices of transition rates attained in each unit
 #'                   attained after adjusting `TP`  using the iterative proportional fitting algorithm to the unit margins. When
-#'                   `local = "none"`, this object is `NULL.}
-#'
-#'  \item{TR.votes.units}{ When `local = "IPF"` or `local = "lik"`, the array of order RxCxK with the tables/matrices of votes linked to the `TR.units` array. When
-#'                   `local = "none"`, this object is `NULL.}
-#'
+#'                   `local = "none"`, this object is `NULL`.}
+#'  \item{TR.votes.units}{ When `local = "IPF"`, `local = "hyper"` or `local = "lik"`, the array of order RxCxK with the tables/matrices of votes linked to the `TR.units` array. When
+#'                   `local = "none"`, this object is `NULL`.}
 #'  \item{TP.lower}{ A matrix of order RxC with the estimated lower limits of the confidence intervals, based on a normal approximation,
 #'                   of the underlying transition probabilities (`TP`) of the row-standardized vote transitions from election 1 to election 2.}
-#'
 #'  \item{TP.upper}{ A matrix of order RxC with the estimated upper limits of the confidence intervals, based on a normal approximation,
 #'                   of the underlying transition probabilities (`TP`) of the row-standardized vote transitions from election 1 to election 2.}
-#'
 #'  \item{beta}{ The estimated vector of internal parameters (logits) at convergence.
 #'               The first `R(C-1) - NR` elements (where `NR` is the number of restrictions imposed in cell probabilities) are logits of transitions and the last `nrow(meta)` elements are the regression
 #'               coefficients in case covariates are present. The over dispersion(s) parameter(s) is (are) in between.
 #'               Default, just one over-dispersion parameter. In case of non-convergence, if the function is used with
-#'               `save.beta = TRUE`, the components of beta from the file "beta.Rdata" and may be used to restart the algorithm
+#'               `save.beta = TRUE`, the components of beta from the file "beta.Rdata" may be used to restart the algorithm
 #'               from where it stopped by introducing them via the `start.values` argument.}
 #'  \item{overdispersion}{ The estimated vector at convergence of internal overdispersion parameters in the scale from 0 to 1.}
 #'  \item{sd.TP}{ Estimated standard deviations of the estimated transition probabilities.}
@@ -224,6 +228,8 @@
 #'  \item{selected.units}{ A vector with the indexes corresponding to the units finally selected to estimate the vote
 #'                        transition probability matrix.}
 #'  \item{iter}{ An integer number indicating the number of iterations performed before converging or when stopped.}
+#'  \item{X}{ Matrix of order KxR with the adjusted electoral results recorded in election 1.}
+#'  \item{Y}{ Matrix of order KxC with the adjusted electoral results recorded in election 2.}
 #'  \item{inputs}{ A list containing all the objects with the values used as arguments by the function.}
 #'
 #' @export
@@ -249,12 +255,12 @@
 #'                          row.names = c(NA, 10L), class = "data.frame")
 #' example <- BPF(votes1, votes2, local = "IPF")$TM
 #'
-#' @importFrom stats runif rnorm
+#' @importFrom stats runif rnorm dmultinom
 
 
 BPF <- function(X,
                 Y,
-                local = "lik",
+                local = "IPF",
                 covariates = NULL,
                 census.changes = "adjust1",
                 stable.units = TRUE,
@@ -270,6 +276,7 @@ BPF <- function(X,
                 start.values = NULL,
                 seed = NULL,
                 max.iter = 100,
+                max.iter.hyper = 1000,
                 tol = 0.0001,
                 verbose = FALSE,
                 save.beta = FALSE,
@@ -304,6 +311,17 @@ BPF <- function(X,
   Y <- XY$Y
   selected.units <- XY$units.selected # This object should be provided in the final output
 
+  # Test integers
+  if(local == "hyper"){
+    is_int <- function(x) is.integer(x) || (is.numeric(x) && identical(round(x), x))
+    if(!all(sapply(N, is_int)) | !all(sapply(Y, is_int))){
+      warning(paste0("The value 'hyper' for argument 'local' can only be used when margins are integers.\n",
+                     "After census adjustments some margins are decimal. The value of the argument 'local'\n",
+                     "has been changed to 'IPF'."))
+      local <- inputs$local <- "IPF"
+    }
+  }
+
   I <- ncol(N) # number of rows of the transfer matrix
   J <- ncol(Y) # number of columns of the transfer matrix
   K <- nrow(N) # initial number of polling units
@@ -334,6 +352,11 @@ BPF <- function(X,
 
   TM.init <- res$Q
   names(res$La) <- names1
+  TP.cov <- res$Q.cov
+
+  if (ir > 0){
+    dimnames(TP.cov) <- nombres
+  }
 
   # Local unit estimates
   if (local == "none"){
@@ -344,6 +367,16 @@ BPF <- function(X,
   } else if(local == "IPF"){
     TP <- TM.init
     local.adjust <- local_units(TM = TP, X = N, Y = Y, tol = tol)
+    TM <- TR <- local.adjust$TR
+    TM.votes <- local.adjust$TR.votes
+    TR.units <- local.adjust$TR.units
+    TR.votes.units <- local.adjust$TR.votes.units
+    dimnames(TM) <- dimnames(TP) <- dimnames(TM.votes) <- dimnames(TR) <- list(names1, names2)
+    dimnames(TR.units) <- dimnames(TR.votes.units) <- nombres
+  } else if(local == "hyper"){
+    TP <- TM.init
+    local.adjust <- unit_all_hg_adjust(TM.init = TP, N = N, Y = Y, seed = seed,
+                                       iter.max = max.iter.hyper)
     TM <- TR <- local.adjust$TR
     TM.votes <- local.adjust$TR.votes
     TR.units <- local.adjust$TR.units
@@ -392,11 +425,13 @@ BPF <- function(X,
   TP.lower <- matrix(pmax(0, TM.init - z.alfa*res$Vp), nrow(TP), dimnames = list(names1, names2))
   TP.upper <- matrix(pmin(1, TM.init + z.alfa*res$Vp), nrow(TP), dimnames = list(names1, names2))
 
-  output <- list("TM" = TM, "TM.votes" = TM.votes, "TP" = TP, "TR" = TR, "TR.units" = TR.units,
-              "TR.votes.units" = TR.votes.units, "TP.lower" = TP.lower, "TP.upper" = TP.upper,
-              "beta" = res$beta, "overdispersion" = res$La, "sd.TP" = res$Vp, "sd.beta" = res$sbe,
-              "cov.beta" = res$V, "madis" = res$madis, "lk" = as.vector(res$lk),
-              "selected.units" = selected.units, "iter" = res$iter, "inputs" = inputs)
+  output <- list("TM" = TM, "TM.votes" = TM.votes, "TP" = TP,
+                 "TP.units.cov" = TP.cov, "TR" = TR, "TR.units" = TR.units,
+                 "TR.votes.units" = TR.votes.units, "TP.lower" = TP.lower, "TP.upper" = TP.upper,
+                 "beta" = res$beta, "overdispersion" = res$La, "sd.TP" = res$Vp, "sd.beta" = res$sbe,
+                 "cov.beta" = res$V, "madis" = res$madis, "lk" = as.vector(res$lk),
+                 "selected.units" = selected.units, "iter" = res$iter, "X" = X,
+                 "Y" = Y, "inputs" = inputs)
 
   class(output) <- "BPF"
   return(output)
