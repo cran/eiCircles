@@ -107,7 +107,7 @@ plot.BPF <- function(x,
   factor.size <- factor.size/max(max(factor.size)) + 0.5
   bbdd$size <- as.vector(factor.size*size.numbers)
 
-  ## Se añaden marginales
+  ## Se aÃ±aden marginales
   if (margins){
     suma.fila <- data.frame(y = n.fil:1L, x = n.col + 1L, coefficient = 0,
                             label = prop.filas, color = "gray27",
@@ -118,7 +118,7 @@ plot.BPF <- function(x,
     bbdd <- rbind(bbdd, suma.fila, suma.columna)
   }
 
-  ## Se añaden nombres
+  ## Se aÃ±aden nombres
   if (is.null(row.names)){
     row.names <- rownames(prop)
   }

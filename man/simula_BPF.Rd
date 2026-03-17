@@ -18,10 +18,10 @@ simula_BPF(
 )
 }
 \arguments{
-\item{n.units}{Either a positive integer number, \code{K}, indicating the number of polling units to be simulated, or
-a \code{KxR} data.frame of a matrix with the number of votes gained in election 1
-for each of the \code{R} options in each of the \code{K} units. If \code{n.units} is a matrix (data.frame) of
-counts (votes) the values of arguments \code{prop1} and \code{theta1} are ommitted.}
+\item{n.units}{Either a positive integer, \code{K}, indicating the number of polling units to be simulated, or
+a \code{KxR} data.frame (or matrix) giving the number of votes obtained in election 1
+for each of the \code{R} options in each of the \code{K} units. If \code{n.units} is a matrix or data.frame
+of counts (votes), the values of arguments \code{prop1} and \code{theta1} are ignored.}
 
 \item{TM}{A row-standardized RxC matrix with the underlying global transition
 probabilities of the simulated elections. If the matrix is not row-standardized,
@@ -78,15 +78,16 @@ Default, FALSE.}
 \value{
 A list with the following components
 
-\item{votes1}{ A matrix of order KxR with the results simulated in each polling unit for the first election.}
-\item{votes2}{ A matrix of order KxC with the results simulated in each polling unit for the second election..}
-\item{TM.global}{ A matrix of order RxC with the actual simulated global transfer matrix of counts.}
-\item{TM.units}{ An array of order RxCxK with the simulated transfer matrices of votes by polling unit. If
-\code{simplify = TRUE} the simulated transfer matrices of votes are returned organized in a Kx(RC) matrix.}
+\item{votes1}{ A \code{KxR} matrix with the (simulated) results in each polling unit for the first election.}
+\item{votes2}{ A \code{KxC} matrix with the simulated results in each polling unit for the second election.}
+\item{TM.global}{ An \code{RxC} matrix with the simulated global transfer matrix of counts.}
+\item{TM.units}{ An \code{RxCxK} array with the simulated transfer matrices of votes by polling unit.
+If \code{simplify = TRUE}, the simulated transfer matrices of votes are returned
+in a \code{Kx(RC)} matrix.}
 \item{inputs}{ A list containing all the objects with the values used as arguments by the function.}
 }
 \description{
-Generates at random a set of RxC tables with the joint distribution of voters in two elections according to the model proposed in Forcina et al. (2012), as extension of Brown and Payne (1986), under the assumption that local units are homogeneous (no covariates). Results in the first election may be provided by the user or generated at random according to the overdispersed multinomial model.
+Generates a set of RxC tables with the joint distribution of voters in two elections according to the model proposed by Forcina et al. (2012), an extension of Brown and Payne (1986), under the assumption that transition probabilities are homogeneous across units. The simulation procedure is detailed in Pavia and Forcina (2026). Results for the first election may be provided by the user or simulated according to the overdispersed multinomial model.
 }
 \examples{
 TMg <- matrix(c(0.6, 0.1, 0.3, 0.1, 0.7, 0.2, 0.1, 0.1, 0.8),
@@ -95,17 +96,17 @@ example <- simula_BPF(n.units = 100, TM = TMg, prop1 = c(0.3, 0.3, 0.4),
                       polling.sizes = c(750, 850))
 }
 \references{
-Brown, P. and Payne, C. (1986). Aggregate data, ecological regression and voting transitions. \emph{Journal of the American Statistical Association}, 81, 453–460. \doi{10.1080/01621459.1986.10478290}
+Brown, P. and Payne, C. (1986). Aggregate data, ecological regression and voting transitions. \emph{Journal of the American Statistical Association}, 81, 453--460. \doi{10.1080/01621459.1986.10478290}
 
-Forcina, A., Gnaldi, M. and Bracalente, B. (2012). A revised Brown and Payne model of voting behaviour applied to the 2009 elections in Italy. \emph{Statistical Methods & Applications}, 21, 109–119. \doi{10.1007/s10260-011-0184-x}
+Forcina, A., Gnaldi, M. and Bracalente, B. (2012). A revised Brown and Payne model of voting behaviour applied to the 2009 elections in Italy. \emph{Statistical Methods & Applications}, 21, 109--119. \doi{10.1007/s10260-011-0184-x}
+
+Pavia, J.M, and Forcina, A. (2026). Simulating electoral behavior. In \emph{Modeling Decisions for Artificial Intelligence, MDAI 2025}. Lecture Notes in Computer Science, vol 15957, Torra, V., Narukawa, Y., Domingo-Ferrer, J. (eds), Springer, Cham, pp. 54-65. \doi{10.1007/978-3-032-00891-6_5}
 }
 \seealso{
-Other simulators for ecological inference overdispersed-multinomial models: 
-\code{\link{simula_BPF_with_deviations}()}
+\code{\link{simula_BPF_with_deviations}} \code{\link{simula_mixture}}
 }
 \author{
 Antonio Forcina, \email{forcinarosara@gmail.com}
 
 Jose M. Pavia, \email{pavia@uv.es}
 }
-\concept{simulators for ecological inference overdispersed-multinomial models}

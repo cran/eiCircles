@@ -1060,7 +1060,12 @@ liderlac <- function(Darg, Marg, sw = 3){
   C <- Darg[[3L]]
   I <- ncol(N)
   K <- nrow(N)
-  Jm <- ncol(Ym)
+  if (is.null(dim(Darg[[2]]))){
+    Jm <- 1
+    Ym <- as.matrix(Darg[[2]])
+  } else {
+    Jm <- ncol(Darg[[2]])
+  }
   IJm <- I * Jm
   d1 <- d2 <- S <- NULL
 
@@ -1109,7 +1114,7 @@ liderlac <- function(Darg, Marg, sw = 3){
     nb <- as.matrix(n * (1L + La * csn))
 
     # Variance matrix
-    Vy <- diag(as.vector(t(P) %*% nb)) - t(P) %*% diag(as.vector(nb)) %*% P
+    Vy <- diagn(as.vector(t(P) %*% nb)) - t(P) %*% diag(as.vector(nb)) %*% P
     e <- y - t(P) %*% n
     H <- solve(Vy)
 
@@ -1120,7 +1125,7 @@ liderlac <- function(Darg, Marg, sw = 3){
     if (sw > 1) {
       He <- H %*% e
       Hd <- H - He %*% t(He)
-      dH <- diag(Hd)
+      dH <- diagn(Hd)
       u <- as.matrix(rep(0L, sid))
       V <- matrix(0L, nrow = sid, ncol = sid)
 
@@ -1128,12 +1133,12 @@ liderlac <- function(Darg, Marg, sw = 3){
         ni <- n[i]
         nbi <- nb[i]
         pi <- P[i, ]
-        Oi <- diag(pi) - pi %*% t(pi)
+        Oi <- diagn(pi) - pi %*% t(pi)
         Lai <- csn[i] * La[i] * (1 - La[i])
         # components wrt P
         rp <- ((i - 1L) * Jm + 1L):(i * Jm)
         u[rp] <- Oi %*% (nbi * (-dH / 2 + Hd %*% pi) + ni * He)
-        u[IJm + i] <- -ni * Lai * sum(diag(Hd %*% Oi)) / 2
+        u[IJm + i] <- -ni * Lai * sum(diagn(Hd %*% Oi)) / 2
 
         # Second derivatives
         if (sw > 2) {
@@ -1144,12 +1149,12 @@ liderlac <- function(Darg, Marg, sw = 3){
             nbl <- nb[l]
             pl <- P[l, ]
             Lal <- csn[l] * La[l] * (1 - La[l])
-            Ol <- diag(pl) - pl %*% t(pl)
+            Ol <- diagn(pl) - pl %*% t(pl)
             hl <- H %*% pl
             jn <- ((l - 1L) * Jm + 1L):(l * Jm)
             if (l <= i) {
               # wrt to beta_i, beta_l'
-              A <- nbi * nbl * (H2 - diag(as.vector(hl))%*%H - t(diag(as.vector(hi))%*%H) +
+              A <- nbi * nbl * (H2 - diagn(as.vector(hl))%*%H - t(diagn(as.vector(hi))%*%H) +
                                   hl %*% t(hi) + H * as.vector(t(pl) %*% H %*% pi))
               A <- A + ni * nl * H
               V[rp, jn] <- Oi %*% A %*% Ol
@@ -1161,7 +1166,7 @@ liderlac <- function(Darg, Marg, sw = 3){
             #  wrt to La_i,beta_l'
             a <- ni * nbl * Lai / 2
             B <- H %*% Oi %*% H
-            V[IJm + i, jn] <- as.vector(a * (Ol %*% (diag(B) - 2 * B %*% pl)))
+            V[IJm + i, jn] <- as.vector(a * (Ol %*% (diagn(B) - 2 * B %*% pl)))
           } # end for d2_units
         } # end sw > 2
       } # end for d1_units
@@ -1257,7 +1262,12 @@ linklac <- function(Darg, Marg){
   beta <- Marg[[5L]]
   C <- as.matrix(Darg[[3L]])
   I <- ncol(Darg[[1L]])
-  Jm <- ncol(Darg[[2L]])
+  if (is.null(dim(Darg[[2]]))){
+    Jm <- 1
+    Ym <- as.matrix(Darg[[2]])
+  } else {
+    Jm <- ncol(Darg[[2]])
+  }
   K <- nrow(Darg[[3L]])
   IJm <- I * Jm
 
@@ -1301,7 +1311,12 @@ TraSeM <- function(be, V, Darg, Marg) {
   C <- Darg[[3L]]
   K <- nrow(N)
   I <- ncol(N)
-  Jm <- ncol(Ym)
+  if (is.null(dim(Darg[[2]]))){
+    Jm <- 1
+    Ym <- as.matrix(Darg[[2]])
+  } else {
+    Jm <- ncol(Darg[[2]])
+  }
   sT <- I * Jm
   IJm <- 1L:sT
   nt <- t(as.matrix(colSums(N)))
@@ -1335,7 +1350,7 @@ TraSeM <- function(be, V, Darg, Marg) {
     for (i in 1:I) {
       pik <- P[i, ]
       im <- Im[i, ]
-      Om[im, im] <- diag(pik) - pik %*% t(pik) # Omega(pik)
+      Om[im, im] <- diagn(pik) - pik %*% t(pik) # Omega(pik)
     }
     for (k in 1:K) {
       # Mahalanobis
@@ -1344,7 +1359,7 @@ TraSeM <- function(be, V, Darg, Marg) {
       csn <- csi * (n > 1) * (n - 1) / (n + (n == 0))
       nb <- n * (1 + La * csn)
       A <- kronecker(as.matrix(nt), diag(Jm)) %*% Om %*% X
-      Vy <- diag(as.vector(t(P) %*% nb)) - t(P) %*% diag(as.vector(nb)) %*% P + A %*% V %*% t(A)
+      Vy <- diagn(as.vector(t(P) %*% nb)) - t(P) %*% diag(as.vector(nb)) %*% P + A %*% V %*% t(A)
       e <- y - t(P) %*% n
       madis[k] <- t(e) %*% solve(Vy) %*% e
     }
@@ -1381,7 +1396,7 @@ TraSeM <- function(be, V, Darg, Marg) {
       csn <- csi * (n > 1) * (n - 1) / (n + (n == 0))
       nb <- n * (1 + La * csn)
       A <- kronecker(as.matrix(nt), diag(Jm)) %*% Om %*% X
-      Vy <- diag(as.vector(t(Pk) %*% nb)) - t(Pk) %*% diag(as.vector(nb)) %*% Pk + A %*% V %*% t(A)
+      Vy <- diagn(as.vector(t(Pk) %*% nb)) - t(Pk) %*% diag(as.vector(nb)) %*% Pk + A %*% V %*% t(A)
       e <- y - t(Pk) %*% n
       madis[k] <- t(e) %*% solve(Vy) %*% e
     } # end for k
@@ -1444,7 +1459,7 @@ TraSeM_unit <- function(be, V, Darg, Marg) {
     for (i in 1:I) {
       pik <- P[i, ]
       im <- Im[i, ]
-      Om[im, im] <- diag(pik) - pik %*% t(pik) # Omega(pik)
+      Om[im, im] <- diagn(pik) - pik %*% t(pik) # Omega(pik)
     }
     for (k in 1:K) {
       # Mahalanobis
@@ -1453,7 +1468,7 @@ TraSeM_unit <- function(be, V, Darg, Marg) {
       csn <- csi * (n > 1) * (n - 1) / (n + (n == 0))
       nb <- n * (1 + La * csn)
       A <- kronecker(as.matrix(nt), diag(Jm)) %*% Om %*% X
-      Vy <- diag(as.vector(t(P) %*% nb)) - t(P) %*% diag(as.vector(nb)) %*% P + A %*% V %*% t(A)
+      Vy <- diagn(as.vector(t(P) %*% nb)) - t(P) %*% diag(as.vector(nb)) %*% P + A %*% V %*% t(A)
       e <- y - t(P) %*% n
     }
     D <- Om %*% X
@@ -1488,7 +1503,7 @@ TraSeM_unit <- function(be, V, Darg, Marg) {
       csn <- csi * (n > 1) * (n - 1) / (n + (n == 0))
       nb <- n * (1 + La * csn)
       A <- kronecker(as.matrix(nt), diag(Jm)) %*% Om %*% X
-      Vy <- diag(as.vector(t(Pk) %*% nb)) - t(Pk) %*% diag(as.vector(nb)) %*% Pk + A %*% V %*% t(A)
+      Vy <- diagn(as.vector(t(Pk) %*% nb)) - t(Pk) %*% diag(as.vector(nb)) %*% Pk + A %*% V %*% t(A)
       e <- y - t(Pk) %*% n
     } # end for k
     Q <- t(matrix(Q, nrow = Jm, byrow = FALSE))
@@ -1745,7 +1760,12 @@ liderla <- function(Darg, Marg, sw) {
   C <- Darg[[3]]
   I <- ncol(N)
   K <- nrow(N)
-  Jm <- ncol(Ym)
+  if (is.null(dim(Darg[[2]]))){
+    Jm <- 1
+    Ym <- as.matrix(Darg[[2]])
+  } else {
+    Jm <- ncol(Darg[[2]])
+  }
   IJm <- I * Jm
   d1 <- d2 <- NULL
 
@@ -1776,7 +1796,7 @@ liderla <- function(Darg, Marg, sw) {
     nb <- as.matrix(n * (1L + La * csn))
 
     # Variance matrix
-    Vy <- diag(as.vector(t(P) %*% nb)) - t(P) %*% diag(as.vector(nb)) %*% P
+    Vy <- diagn(as.vector(t(P) %*% nb)) - (t(P) %*% diag(as.vector(nb)) %*% P)
     e <- y - t(P) %*% n
     H <- solve(Vy)
 
@@ -1787,7 +1807,7 @@ liderla <- function(Darg, Marg, sw) {
     if (sw > 1) {
       He <- H %*% e
       Hd <- H - He %*% t(He)
-      dH <- diag(Hd)
+      dH <- diagn(Hd)
       u <- as.matrix(rep(0L, sid))
       V <- matrix(0L, nrow = sid, ncol = sid)
 
@@ -1795,12 +1815,12 @@ liderla <- function(Darg, Marg, sw) {
         ni <- n[i]
         nbi <- nb[i]
         pi <- P[i, ]
-        Oi <- diag(pi) - pi %*% t(pi)
+        Oi <- diagn(pi) - pi %*% t(pi)
         Lai <- csn[i] * La[i] * (1 - La[i])
         #  components wrt P
         rp <- ((i - 1L) * Jm + 1L):(i * Jm)
         u[rp] <- Oi %*% (nbi * (-dH / 2 + Hd %*% pi) + ni * He)
-        u[IJm + i] <- -ni * Lai * sum(diag(Hd %*% Oi)) / 2
+        u[IJm + i] <- -ni * Lai * sum(diagn(Hd %*% Oi)) / 2
 
         # Second derivatives
         if (sw > 2) {
@@ -1812,13 +1832,13 @@ liderla <- function(Darg, Marg, sw) {
             nbl <- nb[l]
             pl <- P[l, ]
             Lal <- csn[l] * La[l] * (1 - La[l])
-            Ol <- diag(pl) - pl %*% t(pl)
+            Ol <- diagn(pl) - pl %*% t(pl)
             hl <- H %*% pl
             jn <- ((l - 1L) * Jm + 1L):(l * Jm)
 
             if (l <= i) {
               #  wrt to beta_i, beta_l'
-              A <- (H2 - diag(as.vector(hl))%*%H - t(diag(as.vector(hi))%*%H)) +
+              A <- (H2 - diagn(as.vector(hl))%*%H - t(diagn(as.vector(hi))%*%H)) +
                 hl %*% t(hi) + H * as.vector(t(pl) %*% H %*% pi)
               A <- nbi * nbl * A + ni * nl * H
               V[rp, jn] <- Oi %*% A %*% Ol
@@ -1830,7 +1850,7 @@ liderla <- function(Darg, Marg, sw) {
 
             a <- ni * nbl * Lai / 2
             B <- H %*% Oi %*% H
-            V[IJm + i, jn] <- as.vector(a * (Ol %*% (diag(B) - 2 * B %*% pl)))
+            V[IJm + i, jn] <- as.vector(a * (Ol %*% (diagn(B) - 2 * B %*% pl)))
           }
         }
       }
@@ -1873,7 +1893,11 @@ linkla <- function(Darg, Marg, eps = 1e-11) {
   off <- Marg[[3L]]
   b <- Marg[[5L]]
   I <- ncol(Darg[[1L]])
-  Jm <- ncol(Darg[[2L]])
+  if (is.null(dim(Darg[[2]]))){
+    Jm <- 1
+  } else {
+    Jm <- ncol(Darg[[2]])
+  }
   IJm <- I * Jm
 
   et <- X1 %*% b + off
@@ -2394,4 +2418,16 @@ unit_all_hg_adjust <- function(TM.init, N, Y, seed = NULL, iter.max = 1000){
 
 ##------------------------------------------------------------------------------
 
+diagn <- function(x){
+  if (is.null(dim(x))){
+    if (length(x) == 1){
+      x0 <- x
+    } else {
+      x0 <- diag(x)
+    }
+  } else{
+    x0 <- diag(x)
+  }
+  return(x0)
+}
 

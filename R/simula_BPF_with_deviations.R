@@ -1,17 +1,18 @@
 #' Simulate RxC Square Tables with Ecological Fallacy Effects Based on Overdispersed-Multinomial Models
 #'
-#' @description  Generates a set of RxC square (RxR) tables at random, representing the joint distribution of voters in two elections, according to the model proposed by Forcina et al. (2012) as an extension of Brown and Payne (1986), under the assumption that transition probabilities are non-homogeneous across local units. For each unit, a unique transition table is constructed to simulate voter behavior within that unit. Each table is created using a mixture model that considers four latent types of voters: one group following the underlying global transition probabilities of the BPF model, another composed mainly of loyal voters, a third characterized by strategic voting, and a final group whose probability of loyalty to the party they supported in the first election depends on that party's strength in the unit during the first election
+#' @description Generates a set of RxC square (RxR) tables with the joint distribution of voters in two elections according to the model proposed by Forcina et al. (2012), an extension of Brown and Payne (1986), under the assumption that transition probabilities are non-homogeneous across units. The simulation procedure, detailed in Pavia and Forcina (2026), models voter behaviour in each unit using a unit-specific transition table. Each transition table is constructed as a mixture of probabilities representing four latent voter types: (i) voters who follow the global transition probabilities of the BPF model; (ii) largely loyal voters; (iii) strategic voters; and (iv) voters whose probability of remaining loyal depends on their partyâ€™s strength in the unit at the first election.
 #'
-#' @author Antonio Forcina, \email{forcinarosara@@gmail.com}
 #' @author Jose M. Pavia, \email{pavia@@uv.es}
+#' @author Antonio Forcina, \email{forcinarosara@@gmail.com}
 #'
-#' @references Brown, P. and Payne, C. (1986). Aggregate data, ecological regression and voting transitions. *Journal of the American Statistical Association*, 81, 453–460. \doi{10.1080/01621459.1986.10478290}
-#' @references Forcina, A., Gnaldi, M. and Bracalente, B. (2012). A revised Brown and Payne model of voting behaviour applied to the 2009 elections in Italy. *Statistical Methods & Applications*, 21, 109–119. \doi{10.1007/s10260-011-0184-x}
+#' @references Brown, P. and Payne, C. (1986). Aggregate data, ecological regression and voting transitions. *Journal of the American Statistical Association*, 81, 453--460. \doi{10.1080/01621459.1986.10478290}
+#' @references Forcina, A., Gnaldi, M. and Bracalente, B. (2012). A revised Brown and Payne model of voting behaviour applied to the 2009 elections in Italy. *Statistical Methods & Applications*, 21, 109--119. \doi{10.1007/s10260-011-0184-x}
+#' @references Pavia, J.M, and Forcina, A. (2026). Simulating electoral behavior. In *Modeling Decisions for Artificial Intelligence, MDAI 2025*. Lecture Notes in Computer Science, vol 15957, Torra, V., Narukawa, Y., Domingo-Ferrer, J. (eds), Springer, Cham, pp. 54-65. \doi{10.1007/978-3-032-00891-6_5}
 #'
-#' @param n.units Either a positive integer number, `K`, indicating the number of polling units to be simulated, or
-#'                a `KxR` data.frame of a matrix with the number of votes gained in election 1
-#'                for each of the `R` options in each of the `K` units. If `n.units` is a matrix (data.frame) of
-#'                counts (votes) the values of arguments `prop1` and `theta1` are ommitted.
+#' @param n.units Either a positive integer, `K`, indicating the number of polling units to be simulated, or
+#'                a `KxR` data.frame (or matrix) giving the number of votes obtained in election 1
+#'                for each of the `R` options in each of the `K` units. If `n.units` is a matrix or data.frame
+#'                of counts (votes), the values of arguments `prop1` and `theta1` are ignored.
 #'
 #' @param TM A row-standardized RxC matrix with the underlying global transition
 #'           probabilities for the Overdispersed-Multinomial Model. If the matrix is not row-standardized,
@@ -118,18 +119,21 @@
 #' @return
 #' A list with the following components
 #'
-#'  \item{votes1}{ A matrix of order KxR with the results simulated in each polling unit for the first election.}
-#'  \item{votes2}{ A matrix of order KxC with the results simulated in each polling unit for the second election..}
-#'  \item{TM.global}{ A matrix of order RxC with the actual simulated global transfer matrix of counts.}
-#'  \item{TM.units}{ An array of order RxCxK with the simulated transfer matrices of votes by polling unit. If
-#'                 `simplify = TRUE` the simulated transfer matrices of votes are returned organized in a Kx(RC) matrix.}
+#'  \item{votes1}{ A `KxR` matrix with the (simulated) results in each polling unit for the first election.}
+#'  \item{votes2}{ A `KxC` matrix with the simulated results in each polling unit for the second election.}
+#'  \item{TM.global}{ An `RxC` matrix with the simulated global transfer matrix of counts.}
+#'  \item{TM.units}{ An `RxCxK` array with the simulated transfer matrices of votes by polling unit.
+#'                   If `simplify = TRUE`, the simulated transfer matrices of votes are returned
+#'                   in a `Kx(RC)` matrix.}
 #'  \item{inputs}{ A list containing all the objects with the values used as arguments by the function.}
 #'
 #' @export
 #'
 #' @importFrom stats rmultinom rgamma
 #'
-#' @family simulators for ecological inference overdispersed-multinomial models
+#' @note Compared with `simula_mixture`, this function (i) is restricted to square matrices; (ii) considers only four voter types; and (iii) because it mixes only the expected behaviours across voter types, draws from a distribution with smaller variance, even when the latent types and their parameters are the same.
+#'
+#' @seealso \code{\link{simula_BPF}} \code{\link{simula_mixture}}
 #'
 #' @examples
 #' TMg <- matrix(c(0.6, 0.1, 0.3, 0.1, 0.7, 0.2, 0.1, 0.1, 0.8),
@@ -241,7 +245,7 @@ tests_inputs_simula_BF_with_deviations <- function(arggs){
     matriz <- as.matrix(arggs$n.units)
     arggs$prop1 <- rep(1, ncol(matriz))
     arggs$theta1 <- 0.1
-    arggs$polling.sizes <- c(750, 850)
+    arggs$polling.sizes <- rowSums(matriz)
     arggs$n.units <- nrow(arggs$n.units)
     if (!all(matriz >= 0 & matriz == floor(matriz)))
       stop("Argument 'n.units' must be either a positive integer or a matrix of non-negative integers.")
@@ -253,14 +257,14 @@ tests_inputs_simula_BF_with_deviations <- function(arggs){
     stop("The 'TM' matrix must be a square matrix.")
 
   if (!(all(arggs$TM >= 0)))
-    stop("Non-negative values are allowed in argument 'TM'.")
+    stop("Negative values are allowed in argument 'TM'.")
   TM <- arggs$TM/rowSums(arggs$TM)
 
   if(any(is.na(rowSums(TM))))
-    stop("At least of row in 'TM' contains NA's.")
+    stop("At least of row in 'TM' contains NA's or all its elements are zero.")
 
-  if (length(arggs$prop1) < 2L)
-    stop("The argument 'prop1' must have at least length 2.")
+  if (length(arggs$prop1) != nrow(TM))
+    stop("The argument 'prop1' must have the same length as the number of rows in 'TM'.")
 
   if (!(all(arggs$prop1 > 0)))
     stop("Only positive values are allowed in argument 'prop1'.")

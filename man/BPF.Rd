@@ -52,11 +52,11 @@ covariates), with the values of the covariate(s) in each unit. \code{meta} is a 
 (or data.frame) with three columns. The data in these columns inform about the cell(s)
 (row and column) and covariate(s) that should be employed for modelling probabilities in
 each cell. Cell(s) and covariate(s) could be identified by position or names.
-For instance, (2, 3, “income”) means that the covariate identified as “income” in the object
+For instance, (2, 3, "income") means that the covariate identified as "income" in the object
 \code{covar} should be used as covariate to model the probability corresponding to cell (2, 3) of
-the transfer (transition probability) matrix. Equally, (“party1”, “party2”, 4) means that
+the transfer (transition probability) matrix. Equally, ("party1", "party2", 4) means that
 the covariate located in the fourth column of \code{meta} should be used to model the transfer
-probability from “party1” to “party2”, where “party1”  (in \code{X}) and “party2” (in \code{Y}) are
+probability from "party1" to "party2", where "party1"  (in \code{X}) and "party2" (in \code{Y}) are
 names used to identified columns in the election data objects. Default, NULL: no covariates are
 used.}
 
@@ -84,8 +84,8 @@ probabilities (\code{TP} estimates). Default, 0.95.}
 \item{null.cells}{A matrix (or data.frame) with two columns (row, column) informing about the cells whose probabilities
 should be constrained to be zero. Cells could be identified by position or names. For instance, (2, 3)
 means that the probability corresponding to cell (2, 3) of the transfer matrix should be constrained to
-be zero. Equally, (“party1”, “party2”) means that the transfer probability from “party1” (in \code{X})
-to “party2” (in \code{Y}) will be zero, where “party1” and “party2” are names used to identified columns in
+be zero. Equally, ("party1", "party2") means that the transfer probability from "party1" (in \code{X})
+to "party2" (in \code{Y}) will be zero, where "party1" and "party2" are names used to identified columns in
 the election data objects. Because the model takes the last option of \code{Y} as reference, constraints of
 this kind cannot be defined involving a cell of the reference category.
 See \code{Note} and \code{Details} for more information about constraints and how properly define them.
@@ -245,10 +245,10 @@ needed how it is defined. Note that, in the unconstrained model, the design matr
 probabilities listed by row except for the last column which is used as reference:
 
 \itemize{
-\item \code{null.cells}: The column of the design matrix corresponding to the cell defined by ’row’ and column’ declared when defining the constraint is removed.
+\item \code{null.cells}: The column of the design matrix corresponding to the cell defined by 'row' and 'column' declared when defining the constraint is removed.
 \item \code{row.cells.relationships}: The column of the design matrix corresponding to the cell (row, column2) is removed while the one corresponding to the cell (row, column2) is adjusted.
 \item \code{row.cells.relationships.C}: The column of the design matrix corresponding to the cell determined by each pair 'row', 'column' is removed.
-\item \code{pair.cells.relationships}: This constraint is defined by 4 pairs of “row, column”; the column of the design matrix corresponding to the last pair (row2, column2.2) will be removed and the others adjusted.
+\item \code{pair.cells.relationships}: This constraint is defined by 4 pairs of "row, column"; the column of the design matrix corresponding to the last pair (row2, column2.2) will be removed and the others adjusted.
 }
 }
 \note{
@@ -278,9 +278,9 @@ example <- BPF(votes1, votes2, local = "IPF")$TM
 
 }
 \references{
-Brown, P. and Payne, C. (1986). Aggregate data, ecological regression and voting transitions. \emph{Journal of the American Statistical Association}, 81, 453–460. \doi{10.1080/01621459.1986.10478290}
+Brown, P. and Payne, C. (1986). Aggregate data, ecological regression and voting transitions. \emph{Journal of the American Statistical Association}, 81, 453--460. \doi{10.1080/01621459.1986.10478290}
 
-Forcina, A., Gnaldi, M. and Bracalente, B. (2012). A revised Brown and Payne model of voting behaviour applied to the 2009 elections in Italy. \emph{Statistical Methods & Applications}, 21, 109–119. \doi{10.1007/s10260-011-0184-x}
+Forcina, A., Gnaldi, M. and Bracalente, B. (2012). A revised Brown and Payne model of voting behaviour applied to the 2009 elections in Italy. \emph{Statistical Methods & Applications}, 21, 109--119. \doi{10.1007/s10260-011-0184-x}
 }
 \author{
 Antonio Forcina, \email{forcinarosara@gmail.com}

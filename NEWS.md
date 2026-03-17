@@ -1,3 +1,9 @@
+### Package changes from previous ei.Circles version 0.0.1-12
+
+A bug that appears when estimating Rx2 tables is fixed.
+
+A new function `simula_mixture`, complementing the functions `simula_BPF` and `simula_BPF_with_deviations`, is included to simulate both marginal election results and unit vote transfer matrices. The new function implements more electoral behaviours and considers scenarios with more variability.
+
 ### Package changes from previous ei.Circles version 0.0.1-7
 
 Two new functions `simula_BPF` and `simula_BPF_with_deviations` are included in the package to simulate, departing from the basic underlying model in `BPF`, both marginal election results and unit vote transfer matrices, using (i) exclusively the underlying model in `BPF` and (ii) this model including ecological fallacy effects.
